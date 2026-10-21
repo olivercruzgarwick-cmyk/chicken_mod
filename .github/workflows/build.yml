@@ -1,0 +1,46 @@
+name: Build Taiga Flock from source ZIP
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ForgeGradle build (Minecraft 1.20.1)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out build files
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.8'
+
+      - name: Extract source project
+        run: unzip -q taiga-flock-source.zip -d source
+
+      - name: Validate JSON resources and texture references
+        working-directory: source/taiga-flock
+        run: python3 scripts/validate_resources.py
+
+      - name: Build and re-obfuscate mod
+        working-directory: source/taiga-flock
+        run: gradle --no-daemon build
+
+      - name: Upload mod JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: taiga-flock-jar
+          path: source/taiga-flock/build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 14
